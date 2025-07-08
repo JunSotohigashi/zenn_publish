@@ -12,9 +12,8 @@ published: false
 この問題への対応方法はいくつかあるのですが，VSCodeと組み合わせると一筋縄ではいかなかったので，知見を共有します．
 
 
-
-
 # 最小構成
+## ファイル構成
 ```
 project_hoge
 ├── .devcontainer.json
@@ -47,16 +46,16 @@ project_hoge
 
 
 ```Dockerfile:Dockerfile
-FROM debian:slim
+FROM debian:bookworm-slim
 
 ##############################
 # Install dependencies at here
 ##############################
 
-# Example1: Install graphviz
+# Example1: Install git
 # RUN apt-get update && \
 #     apt-get install -y --no-install-recommends \
-#     graphviz && \
+#     git && \
 #     apt-get clean
 
 # Example2: Install Python and pip
@@ -131,6 +130,157 @@ fi
 exec setpriv --reuid=$USER --regid=$USER --init-groups "$@"
 
 ```
+
+## コンテナ操作
+```sh
+# ビルド
+docker compose build
+
+# コマンドの実行
+docker compose run --rm demo_app (command)
+
+# ビルド+コマンドの実行
+docker compose run --build --rm demo_app (command)
+```
+
+
+# 解説
+## Dockerfile
+ここで必要なパッケージのインストールなどを行います．
+この時点ではrootですので，`/root`に作成したデータは後で参照できなくなることに注意してください．
+最後に，イメージ内に一般ユーザを作成します．
+コンテナの立ち上げ時に動的にUIDを変更するため，`entrypoint.sh`を設定しておきます．
+
+## compose.yaml
+ここで，イメージ名の設定や，ワークスペースのバインド，GPU使用の設定を行います．
+Docker composeを使用すると，立ち上げコマンドがシンプルになるほか，複数コンテナを運用するときも好都合です．
+
+## entrypoint.sh
+バインドされたワークスペースのownerのUIDを取得し，コンテナ内ユーザのUIDを変更します．
+`/home/user`以下の全ファイルのownerを再帰的に変更する処理が行われますので，大量のファイルがあるとコンテナの起動処理が重くなります．
+このスクリプトはrootとして開始されますが，UIDの切り替えが完了するとuserに切り替わります．
+そのため，dockerの`-u`オプションで強制的にUIDを変更しないでください．
+
+## .devcontainer.json
+VSCodeをコンテナにアタッチするときの構成ファイルです．
+コンテナ内ユーザをuserに設定します．
+この項目がないと，rootとしてアタッチされてしまいます．
+
+
+# 補足
+## devcontainerのupdateRemoteUserUID機能について
+この機能を使用すると，新しいユーザを追加してイメージを再ビルドする処理が行わるため，コンテナ立ち上げが遅くなります．
+また，厳密には別のイメージを使用することになるため，再現性の観点であまり好ましくありません．
+
+## SSH，GPGについて
+プライベートリポジトリへのアクセス時など，本来であればSSH秘密鍵をコンテナ内に持ち込む必要があります．
+しかし，VSCodeをアタッチすることでこれらは自動的に行われます．
+そのため，ssh-agentなどの設定は必要ありません．
+
+## 複数のイメージを運用する場合
+イメージ毎に`devcontainer.json`を用意してください．
+
+entrypoint.shはコピーしてください．
+Dockerfileより上の階層に配置してしまうと，ビルド時に参照できません．
+
+### ファイル構成
+```
+project_hoge
+├── .devcontainer
+│   ├── app1
+│   │   └── devcontainer.json
+│   └── app2
+│       └── devcontainer.json
+├── app1
+│   ├── Dockerfile
+│   └── entrypoint.sh
+├── app2
+│   ├── Dockerfile
+│   └── entrypoint.sh
+└── compose.yaml
+```
+
+```json:.devcontainer/app1/devcontainer.json
+{
+    "dockerComposeFile": "compose.yaml",
+    "service": "demo_app1",
+    "runServices": [
+        "demo_app1"
+    ],
+    "remoteUser": "user",
+    "updateRemoteUserUID": false,
+    "workspaceFolder": "/workspace",
+    "shutdownAction": "stopCompose",
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "terminal.integrated.defaultProfile.linux": "bash"
+            },
+            "extensions": []
+        }
+    }
+}
+```
+
+```json:.devcontainer/app2/devcontainer.json
+{
+    "dockerComposeFile": "compose.yaml",
+    "service": "demo_app2",
+    "runServices": [
+        "demo_app2"
+    ],
+    "remoteUser": "user",
+    "updateRemoteUserUID": false,
+    "workspaceFolder": "/workspace",
+    "shutdownAction": "stopCompose",
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "terminal.integrated.defaultProfile.linux": "bash"
+            },
+            "extensions": []
+        }
+    }
+}
+```
+
+```yaml:compose.yaml
+services:
+  demo_app1:
+    build:
+      context: ./app1
+      dockerfile: Dockerfile
+    image: dev_docker_demo_app1
+    tty: true
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    environment:
+      - TERM=xterm-256color
+    ################################################
+    # Uncomment below lines if you want to use GPU
+    ################################################
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+  demo_app2:
+    build:
+      context: ./app2
+      dockerfile: Dockerfile
+    image: dev_docker_demo_app2
+    tty: true
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    environment:
+      - TERM=xterm-256color
+```
+
+
 
 # まとめ
 * compose.yamlでワーキングディレクトリをバインド
