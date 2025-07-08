@@ -3,7 +3,7 @@ title: "開発環境としてのDocker運用ベストプラクティス"
 emoji: "🌟"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: ["Docker", "VS Code", "devcontainer"]
-published: true
+published: false
 ---
 
 # 概要
@@ -279,6 +279,38 @@ services:
 * devcontainer.jsonを作成することでVSCodeに対応
 
 
+# 参考サイトなど
+## 公式ドキュメント
+やはり，困ったときに最初に見るべきなのは，公式ドキュメント．
+@[card](https://docs.docker.jp/v1.12/compose/compose-file.html)
+@[card](https://docs.docker.jp/v1.12/engine/reference/run.html)
+@[card](https://docs.docker.jp/engine/articles/dockerfile_best-practice.html)
+@[card](https://www.docker.com/ja-jp/blog/understanding-the-docker-user-instruction/)
+@[card](https://containers.dev/implementors/json_reference/)
 
+## /etc/passwdをマウントする方法
+この方法は，明示的にユーザを作成する必要がない．
+しかし，ホームディレクトリが必要な場合や，LDAP環境下では使用できない．
+@[card](https://qiita.com/muscat201807/items/b24abc5dde60024dbac1)
+@[card](https://blog.amedama.jp/entry/docker-container-host-same-user)
 
+## ビルド時にUIDを揃える方法
+この方法では，ARGなどを用いてビルド時にホスト側UIDと同一のユーザを作成する．
+ビルドされたイメージは，その環境に依存してしまうので，別のユーザは使えない．
+また，`$UID`が直接参照できないので，`.env`を使うなどの工夫が必要．
+@[card](https://code.visualstudio.com/remote/advancedcontainers/add-nonroot-user)
+@[card](https://zenn.dev/forrep/articles/8c0304ad420c8e)
+@[card](https://yaruki-strong-zero.hatenablog.jp/entry/docker_container_uid_gid)
+
+## entrypointでコンテナ立ち上げ時にUIDを変更する方法
+最終的に採用した方法．最も環境依存が小さく，可搬性が高い．
+@[card](https://zenn.dev/anyakichi/articles/73765814e57cba)
+
+## userns-remapを使った方法
+管理者による設定が必要．
+また，自動的にUIDを読み替えてくれる機能ではない．
+@[card](https://docs.docker.jp/engine/security/userns-remap.html)
+@[card](https://docs.docker.com/engine/security/userns-remap/)
+@[card](https://makiuchi-d.github.io/2024/06/08/klabtechbook11-docker-userns-remap.ja.html)
+@[card](https://zenn.dev/hankei6km/articles/userns-remap-in-gha-ubuntu-runner)
 
