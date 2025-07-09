@@ -191,7 +191,7 @@ project_hoge
 
 ```json:.devcontainer/app1/devcontainer.json
 {
-    "dockerComposeFile": "compose.yaml",
+    "dockerComposeFile": "../../compose.yaml",
     "service": "demo_app1",
     "runServices": [
         "demo_app1"
@@ -213,7 +213,7 @@ project_hoge
 
 ```json:.devcontainer/app2/devcontainer.json
 {
-    "dockerComposeFile": "compose.yaml",
+    "dockerComposeFile": "../../compose.yaml",
     "service": "demo_app2",
     "runServices": [
         "demo_app2"
