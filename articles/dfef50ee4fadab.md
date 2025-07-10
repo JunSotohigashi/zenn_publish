@@ -288,9 +288,29 @@ services:
 @[card](https://www.docker.com/ja-jp/blog/understanding-the-docker-user-instruction/)
 @[card](https://containers.dev/implementors/json_reference/)
 
+
+## コンテナ立ち上げ時にUIDを指定する方法
+```sh
+docker run --rm -u $UID:$UID -v $HOME:$HOME -e HOME=$HOME debian:bookworm-slim
+```
+この方法では，明示的にユーザを作成する必要がない．
+しかし，コンテナ内にユーザが存在しないため，gitの実行などに不具合が生じる．
+
+```sh:Git実行時のエラー例
+I have no name!@xxxxxxxxxxxx$ git fetch
+No user exists for uid xxxx
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+```
+@[card](https://qiita.com/manabuishiirb/items/83d675afbf6b4eea90e4)
+@[card](https://zenn.dev/temple_c_tech/articles/exec-container-by-user)
+
+
 ## /etc/passwdをマウントする方法
 この方法は，明示的にユーザを作成する必要がない．
-しかし，ホームディレクトリが必要な場合や，LDAP環境下では使用できない．
+しかし，LDAP環境では使用できない．
 @[card](https://qiita.com/muscat201807/items/b24abc5dde60024dbac1)
 @[card](https://blog.amedama.jp/entry/docker-container-host-same-user)
 
@@ -304,6 +324,7 @@ services:
 
 ## entrypointでコンテナ立ち上げ時にUIDを変更する方法
 最終的に採用した方法．最も環境依存が小さく，可搬性が高い．
+事前にコンテナ内に一般ユーザを作成し，コンテナの立ち上げ時にUIDを変更する．
 @[card](https://zenn.dev/anyakichi/articles/73765814e57cba)
 
 ## userns-remapを使った方法
